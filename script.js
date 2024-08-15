@@ -10,7 +10,7 @@ const socket = new WebSocket('ws://127.0.0.1:8080');
 function verificacaoTela(fun){
     if(fun == "direita"){
         let currentLeft = parseInt(player.style.left) || 0;
-        if(player.style.left = (currentLeft + 50) < 800){
+        if(player.style.left = (currentLeft + 50) < 600){
             return true
         }else{
             return false
@@ -32,7 +32,7 @@ function verificacaoTela(fun){
         }
     }else if(fun == "baixo"){
         let currentLeft = parseInt(player.style.top) || 0;
-        if(player.style.top = (currentLeft + 50) < 600){
+        if(player.style.top = (currentLeft + 50) < 400){
             return true
         }else{
             return false
@@ -146,6 +146,9 @@ function addPlayerList(id){
                 
     var th = document.createElement("th")
     th.innerHTML = id
+    if(th.innerHTML == player.id){
+        th.className = "selfList"
+    }
 
     var thP = document.createElement("th")
     thP.innerHTML = 0
@@ -156,7 +159,6 @@ function addPlayerList(id){
 
     trB.appendChild(tr)
 }
-
 
 socket.onmessage = async function(event) {
     var data = JSON.parse(event.data)
@@ -216,14 +218,18 @@ socket.onmessage = async function(event) {
 
         number.innerHTML = numberS[0] + "/" + numberS[1]
         if(numberS[0] == numberS[1]){
-            var nT = 50 * Math.floor(Math.random() * 12) + "px"
-            var nL = 50 * Math.floor(Math.random() * 16) + "px"
+            var nT = 50 * Math.floor(Math.random() * 8) + "px"
+            var nL = 50 * Math.floor(Math.random() * 12) + "px"
             var info = {
                 info: "IniciarJogo",
                 top: nT,
                 left: nL,
             }
             socket.send(JSON.stringify(info))
+            var f = document.getElementById("button-pronto")
+            var r = document.getElementById("number-prontos")
+            f.hidden = true
+            r.hidden = true
         }
     }
 
@@ -257,5 +263,104 @@ socket.onmessage = async function(event) {
         var n = Number(table.innerHTML) + 1
         table.innerHTML = n
         document.getElementById("fruit").remove()
+        var nT = 50 * Math.floor(Math.random() * 8) + "px"
+            var nL = 50 * Math.floor(Math.random() * 12) + "px"
+            var info = {
+                info: "ftP",
+                top: nT,
+                left: nL,
+                pegas: table.innerHTML,
+                id: data.id
+            }
+        socket.send(JSON.stringify(info))
+    }
+
+    if(data.info == "esperarPartida"){
+        document.body.innerHTML = ""
+
+
+        var header = document.createElement("header")
+        header.className = "header-espera"
+
+        var div = document.createElement("div")
+        div.className = "div-header-espera"
+
+        header.appendChild(div)
+
+        var h1 = document.createElement("h1")
+        h1.innerHTML = "Esperando o Jogo acabar"
+
+        var span = document.createElement("span")
+        span.innerHTML = "Quando acabar ira iniciar automaticamente"
+
+        div.appendChild(h1)
+        div.appendChild(span)
+
+        document.body.appendChild(header)
+    }
+
+    if(data.info == "infoPegasWin"){
+        console.log(data.pegas)
+        if(player.id == data.id){
+            if(data.pegas == 5){
+                var info = {
+                    info: "playerWin",
+                    id: player.id,
+                }
+                socket.send(JSON.stringify(info))
+            }
+        }
+    }
+
+    if(data.info == "playerWin"){
+        console.log(data.id + "ganhou")
+        document.body.innerHTML = ""
+
+        if(player.id == data.id){
+            var header = document.createElement("header")
+            header.className = "header-vitoria"
+            header.innerHTML = "Victory"
+
+            var button = document.createElement("button")
+            button.innerHTML = "Jogar Novamente"
+
+            button.addEventListener("click", () => {
+                var info = {
+                    info: "deleteClient",
+                }
+    
+                socket.send(JSON.stringify(info))
+            })
+
+            header.appendChild(button)
+
+            document.body.appendChild(header)
+
+            
+        }else{
+            var header = document.createElement("header")
+            header.className = "header-derrota"
+            header.innerHTML = "Derrota"
+
+            var button = document.createElement("button")
+            button.innerHTML = "Jogar Novamente"
+
+            button.addEventListener("click", () => {
+                window.location.href = "index.html"
+                var info = {
+                    info: "deleteClient",
+                }
+    
+                socket.send(JSON.stringify(info))
+            })
+
+            header.appendChild(button)
+
+            document.body.appendChild(header)
+
+        }
+    }
+    if(data.info == "ref"){
+        window.location.href = "index.html"
     }
 }

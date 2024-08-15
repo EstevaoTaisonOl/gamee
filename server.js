@@ -3,7 +3,7 @@
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
 
-const clients = new Set();
+var clients = new Set();
 var variaveis = []
 
 var statsPartida = false
@@ -15,67 +15,69 @@ function pesquisa(fruit,name) {
   return fruit === name;
 }
 
-function spawnFruit(){
-
-}
-
 server.on('connection', (ws) => {
   const uniqueId = 'id-' + Date.now();
-
-  console.log('Cliente conectado');
   clients.add(ws);
-  var info = {
-    info: "attPlayerNewPronto",
-    pro: prontos,
-  }
-        
-  ws.send(JSON.stringify(info))
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      var info = {
-        info: "atualizarPlayers",
-        size: clients.size,
-        stats: "adicionado"
-      }
-      client.send(JSON.stringify(info));
+
+  if(statsPartida){
+    var info = {
+      info: "esperarPartida",
     }
-  }
-  for(var i = 0; i< variaveis.length; i++){
-    clients.forEach(value => {
-      console.log(pesquisa(variaveis[i],value))
-      if(pesquisa(variaveis[i], value)){
+    ws.send(JSON.stringify(info))
+  }else{
+
+    console.log('Cliente conectado');
+    var info = {
+      info: "attPlayerNewPronto",
+      pro: prontos,
+    }
+          
+    ws.send(JSON.stringify(info))
+    for (const client of clients) {
+      if (client.readyState === WebSocket.OPEN) {
         var info = {
-          info: "addPlayerExist",
-          player: 1,
-          id: uniqueId,
+          info: "atualizarPlayers",
+          size: clients.size,
+          stats: "adicionado"
         }
-
-        value.send(JSON.stringify(info))
+        client.send(JSON.stringify(info));
       }
-    });
-  }
-  variaveis.push(ws)
-  variaveis.push(uniqueId)
-  console.log(uniqueId)
-  var ind = undefined
-
-  for (var i = 0; i < variaveis.length; i++) {
-    if (pesquisa(variaveis[i], ws)) {
-        // Use findIndex with a condition function to find the index
-        var ind = variaveis.findIndex(item => item === variaveis[i + 1]);
-        console.log(ind);
     }
-}
+    for(var i = 0; i< variaveis.length; i++){
+      clients.forEach(value => {
+        if(pesquisa(variaveis[i], value)){
+          var info = {
+            info: "addPlayerExist",
+            player: 1,
+            id: uniqueId,
+          }
 
+          value.send(JSON.stringify(info))
+        }
+      });
+    }
+    variaveis.push(ws)
+    variaveis.push(uniqueId)
 
-  var info = {
-    info: "addPlayer",
-    size: clients.size,
-    variaveis: variaveis,
-    ind: ind
+    var ind = undefined
+
+    for (var i = 0; i < variaveis.length; i++) {
+      if (pesquisa(variaveis[i], ws)) {
+          // Use findIndex with a condition function to find the index
+          var ind = variaveis.findIndex(item => item === variaveis[i + 1]);
+      }
   }
 
-  ws.send(JSON.stringify(info))
+
+    var info = {
+      info: "addPlayer",
+      size: clients.size,
+      variaveis: variaveis,
+      ind: ind
+    }
+
+    ws.send(JSON.stringify(info))
+  }
   
   
   ws.on('message', (message) => {
@@ -84,12 +86,14 @@ server.on('connection', (ws) => {
     var play = JSON.parse(data)
         if(play.info == "IniciarJogo"){
           statsPartida = true
+
         }   
     var dd = JSON.parse(data)
     if(dd.info == "atualizarStatsPronto"){
       prontos.push(ws)
       prontos.push(dd.acont)
     }
+
 
     for (const client of clients) {
       if (client.readyState === WebSocket.OPEN) {
@@ -101,9 +105,49 @@ server.on('connection', (ws) => {
             }
 
             client.send(JSON.stringify(info))
+
+        }
+        if(dd.info == "ftP"){
+          var info = {
+            info: "spawnFruit",
+            left : dd.left,
+            top: dd.top,
+          }
+
+          client.send(JSON.stringify(info))
+
+          var info = {
+            info: "infoPegasWin",
+            pegas: play.pegas,
+            id: play.id
+          }
+
+          ws.send(JSON.stringify(info))
         }
         client.send(data);
       }
+    }
+
+    if(dd.info == "playerWin"){
+      statsPartida = false
+    }
+
+    if(dd.info == "deleteClient"){
+      variaveis = []
+
+      statsPartida = false
+      fruitSpawn = false
+      prontos = []
+
+      var info = {
+        info: "ref",
+      }
+
+      clients.forEach(value => {
+
+          value.send(JSON.stringify(info))
+      });
+      clients = new Set()
     }
   });
   ws.on('close', () => {
@@ -121,7 +165,7 @@ server.on('connection', (ws) => {
         }
       });
     }
-    console.log(prontos)
+
     variaveis.splice(variaveis.indexOf(ws), 2);
     prontos.splice(prontos.indexOf(ws), 2);
     for(var i = 0; i< prontos.length; i++){
